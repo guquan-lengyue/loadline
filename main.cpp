@@ -16,11 +16,15 @@ void color_thresh(Mat &src,
                   int l_thresh,
                   int v_thresh);
 
+void rgb_select(Mat &src,
+                Mat &dst,
+                int r_thresh,
+                int g_thresh);
+
 void get_channel(Mat &src, Mat &channel, int channel_num);
 
 void interesting_area(Mat &src, Mat &dst);
 
-void color_gradient_threshold();
 
 const static Size WINDOW_SIZE(512, 512);
 
@@ -33,20 +37,37 @@ int main() {
     resizeWindow("origin", WINDOW_SIZE);
     namedWindow("color_thresh", WINDOW_NORMAL);
     resizeWindow("color_thresh", WINDOW_SIZE);
+    while (cap.read(image)) {
+        imshow("origin", image);
 
-    cap.read(image);
-    imshow("origin", image);
+        Mat color_thresh_rst;
+        color_thresh(
+                image,
+                color_thresh_rst,
+                74,
+                70);
 
-    Mat color_thresh_rst;
-    color_thresh(
-            image,
-            color_thresh_rst,
-            74,
-            70);
 
-    show_image("colo_thresh", color_thresh_rst);
-    waitKey(0);
+        Mat bgr_thresh_rst;
+        rgb_select(image,
+                   bgr_thresh_rst,
+                   70,
+                   60);
+        Mat gaus_rst, grad_x;
+        int kernel = 5;
+        GaussianBlur(image,
+                     gaus_rst,
+                     Size(5, 5),
+                     1,
+                     1);
+        abs_sobel_thresh(image, grad_x, 'x', kernel);
+        Mat combine = color_thresh_rst & bgr_thresh_rst & grad_x;
+        Mat interesting_area_image;
+        interesting_area(combine,interesting_area_image);
+        show_image("interesting_area_image", interesting_area_image);
 
+        waitKey(10);
+    }
     return 0;
 }
 
@@ -57,7 +78,7 @@ void abs_sobel_thresh(InputArray image,
                       int sobel_kernel) {
     //计算X或Y方向的方向梯度
     //转化成灰度图像
-//    cvtColor(image, dst_gray, COLOR_BGR2GRAY);
+    cvtColor(image, dst_gray, COLOR_BGR2GRAY);
     // 求X或Y方向的方向梯度
     if ('x' == orient) {
         Sobel(
@@ -128,4 +149,18 @@ void show_image(const string &window_name, const Mat &image) {
     namedWindow(window_name, WINDOW_NORMAL);
     resizeWindow(window_name, WINDOW_SIZE);
     imshow(window_name, image);
+}
+
+void rgb_select(Mat &src,
+                Mat &dst,
+                int r_thresh,
+                int g_thresh) {
+    Mat g, r;
+
+    get_channel(src, g, 1);
+    get_channel(src, r, 2);
+
+    threshold(g, g, g_thresh, 255, THRESH_BINARY);
+    threshold(r, r, r_thresh, 255, THRESH_BINARY);
+    dst = r & g;
 }
